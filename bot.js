@@ -32,34 +32,29 @@ bot.on('message', message=> {
             case 'ping':
                 message.channel.send('Pong!');
             case 'play':
-                
-                const streamOptions = { seek: 0, volume: 1 };
-                var broadcast = bot.createVoiceBroadcast();
                 if(message.member.voiceChannel)
                 {
+                    var url;
+                    args.forEach(concat);
+                    youtube.searchVideos(query, 4)
+                            .then(results => {
+                                console.log(`The video's url is ${results[0].url}`)
+                                url = String(results[0].url);
+                                console.log('url is '+url);
+                                
+                                console.log(2);
+                                })
+                                .catch(console.log);
+
                     var voiceChannel = message.member.voiceChannel;
                     voiceChannel.join()
                       .then(connection => { 
-                        const stream = ytdl('https://www.youtube.com/watch?v=gOMhN-hfMtY', { filter : 'audioonly' });
-                        const dispatcher = connection.playStream(stream, streamOptions);
-                        dispatcher.on("end", end => {
-                            console.log("left channel");
-                            voiceChannel.leave();
-                        });
-                        if(args.length >0)
-                        {
-                            var url;
-                            args.forEach(concat);
+                            const streamOptions = { seek: 0, volume: 1 };
+                            var broadcast = bot.createVoiceBroadcast();
+                            const stream = ytdl('https://www.youtube.com/watch?v=3ymwOvzhwHs', { filter : 'audioonly' });
+                            const dispatcher = connection.playStream(stream, streamOptions);
                             console.log(1);
-                            youtube.searchVideos('Centuries', 4)
-                                .then(results => {
-                                    console.log(`The video's url is ${results[0].url}`)
-                                    url = String(results[0].url);
-                                    console.log('url is '+url);
-
-                                })
-                                .catch(console.log);
-                        }
+                           
                         
                       })
                       .catch(err => console.log(err));
