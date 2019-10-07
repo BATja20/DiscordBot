@@ -1,17 +1,12 @@
 var Discord = require('discord.js');
-var logger = require('winston');
 const ytdl = require('ytdl-core');
 const fs = require('fs');
 var auth = require('./auth.json');
 const YouTube = require('simple-youtube-api');
-const youtube = new YouTube('AIzaSyA6D2D62JUnbVh4WxrrEepsU5X2Bev5n4o');
+const youtube = new YouTube(auth.youtubeToken);
 var query = '';
-// Configure logger settings
-/*logger.remove(logger.transports.Console);
-logger.add(new logger.transports.Console, {
-    colorize: true
-});
-logger.level = 'debug';*/
+var dispatcher = null;
+var stopped = true, paused = false;
 // Initialize Discord Bot
 const bot = new Discord.Client();
 bot.login(auth.token);
@@ -19,8 +14,7 @@ bot.on('ready', () => {
   console.log('I am ready!');
 });
 bot.on('message', message=> {
-    // Our bot needs to know if it will execute a command
-    // It will listen for messages that will start with `!`
+
     var messageString = String(message);
     if (messageString.substring(0, 1) == '!') {
         var args = messageString.substring(1).split(' ');
@@ -31,40 +25,87 @@ bot.on('message', message=> {
             // !ping
             case 'ping':
                 message.channel.send('Pong!');
+            break;
             case 'play':
                 if(message.member.voiceChannel)
                 {
-                    var url;
                     args.forEach(concat);
-                    youtube.searchVideos(query, 4)
-                            .then(results => {
-                                console.log(`The video's url is ${results[0].url}`)
-                                url = String(results[0].url);
-                                console.log('url is '+url);
-                                
-                                console.log(2);
-                                })
-                                .catch(console.log);
-
                     var voiceChannel = message.member.voiceChannel;
-                    voiceChannel.join()
-                      .then(connection => { 
-                            const streamOptions = { seek: 0, volume: 1 };
-                            var broadcast = bot.createVoiceBroadcast();
-                            const stream = ytdl('https://www.youtube.com/watch?v=3ymwOvzhwHs', { filter : 'audioonly' });
-                            const dispatcher = connection.playStream(stream, streamOptions);
-                            console.log(1);
-                           
-                        
-                      })
-                      .catch(err => console.log(err));
+                        voiceChannel.join()
+                          .then(connection => { 
+                                playMusic(query,connection);
+                                query = '';
+                          })
+                          .catch(err => console.log(err));
                 }
+                else
+                    message.channel.send('You need to be in a voice channel to do that command.');
             break;
-            // Just add any case commands if you want to..
+            case 'stop':
+                  if(!stopped || dispatcher == null)
+                  {
+                      dispatcher.end();
+                      dispatcher.on('end', () => {
+                          stopped = true;
+                      });
+                  }
+                  else
+                      message.channel.send('There is nothing to stop! I CANT STHAP!');
+            break;
+            case 'pause':
+                  if(!paused || dispatcher != null)
+                  {
+                      dispatcher.pause();
+                      paused = true;
+                  }
+                  else
+                      message.channel.send('WHERE IS THE PAUSE BUTTON?!');
+            break;
+            case 'resume':
+                  if(paused || dispatcher != null)
+                  {
+                      dispatcher.resume();
+                      paused = false;
+                  }
+                  else
+                      message.channel.send('Here is my resume. *slowly slides in CV*');
+            break;
          }
      }
-     function concat(string)
-     {
-        query += string;
-     }
+     
 });
+function concat(string)
+     {
+        query += string+' ';
+        return;
+     }
+
+async function playMusic(query,connection)
+     {
+        const streamOptions = { seek: 0, volume: 1 };
+        var url = String(await searchForVideo(query));
+        console.log('type of url' +url+' is '+typeof url);
+        var broadcast = bot.createVoiceBroadcast();
+        if(ytdl.validateURL(url))
+        {
+            const stream = ytdl( url , { filter : 'audioonly' });
+            dispatcher = connection.playStream(stream, streamOptions);
+            stopped = false;
+        }
+        else
+            console.log('Couldn\'t validate URL');
+        return;
+     }
+
+function searchForVideo(query)
+     {
+         console.log(query);
+         return new Promise(function(resolve,reject){
+             youtube.searchVideos(query, 1)
+                            .then(results => {
+                                console.log(`The video's url is ${results[0].url}`)
+                                resolve(results[0].url);                               
+                                })
+                                .catch(console.log);
+         })
+     }
